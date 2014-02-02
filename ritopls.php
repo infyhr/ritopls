@@ -2,7 +2,13 @@
 class ritopls {
     static $vars, $request_tick, $ch, $ch_info;
 
-    public static function set($var_name, $var_value = '') {
+    /**
+     * Sets a variable in a static $vars property.
+     * @param string $var_name the variable name
+     * @param mixed $var_value the variable value.
+     * @return null
+     */
+    public static function set($var_name, $var_value = null) {
         if(is_array($var_name)) {
             foreach($var_name as $k => $v) {
                 self::$vars[$k] = $v;
@@ -12,14 +18,30 @@ class ritopls {
         }
     }
 
+    /**
+     * Returns a variable from the static $vars property.
+     * @param string $var_name Variable name.
+     * @return mixed
+     */
     public static function get($var_name) {
         if(array_key_exists($var_name, self::$vars) && isset(self::$vars[$var_name])) { return self::$vars[$var_name]; }
     }
 
+    /**
+     * Checks whether a variable is set in the static $vars property.
+     * @param string $var_name Variable name.
+     * @return boolean
+     */
     public static function is_set($var_name) {
         if(isset(self::$vars[$var_name])) { return true; }else { return false; }
     }
 
+    /**
+     * Performs a cURL request to Riot's servers.
+     * @param string $version API version
+     * @param string $rest The rest of the URI (post-version)
+     * @return array $data
+     */
     public static function request($version, $rest) {
         // First, check the timer.
         if(file_exists('./TICK')) {
