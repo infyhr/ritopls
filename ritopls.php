@@ -42,7 +42,7 @@ class ritopls {
      * @param string $rest The rest of the URI (post-version)
      * @return array $data
      */
-    public static function request($version, $rest) {
+    private static function request($version, $rest) {
         // First, check the timer.
         if(file_exists('./TICK')) {
             self::$request_tick = filemtime('./TICK');
@@ -72,7 +72,10 @@ class ritopls {
         // Do we have a proper CURLOPT_TIMEOUT set up? If not, make the TTL 10s.
         if(!self::is_set('timeout')) { self::set('timeout', 10); }
 
-        curl_setopt(self::$ch, CURLOPT_URL, 'https://prod.api.pvp.net/api/lol/' . self::get('region') . '/' . $version . '/' . urlencode($rest) . '?api_key=' . self::get('key'));
+        // Have we got more than 1 argument? If so, make it work with the API key $_GET parameter.
+        if(strstr($rest, '?')) { $rest = $rest . '&'; }else { $rest = $rest . '?'; }
+
+        curl_setopt(self::$ch, CURLOPT_URL, 'https://prod.api.pvp.net/api/lol/' . self::get('region') . '/' . $version . '/' . $rest . 'api_key=' . self::get('key'));
         curl_setopt(self::$ch, CURLOPT_HEADER, false);
         curl_setopt(self::$ch, CURLOPT_RETURNTRANSFER, true);
         if(self::is_set('no_ssl_verify')) {
@@ -118,6 +121,78 @@ class ritopls {
 
         // Update the request tick timer.
         touch('./TICK');
+    }
+
+    private static function region_check($api, $region = NULL) {
+        if(!$region) { $region = self::get('region'); }
+        switch($api) {
+            case 'champion':
+            case 'game':
+            case 'stats':
+            case 'summoner':
+                if(in_array($region, ['br', 'eune', 'euw', 'na'])) { return true; }else { return false; }
+                break;
+            case 'team':
+            case 'league':
+                if(in_array($region, ['br', 'eune', 'euw', 'na', 'tr'])) { return true; }else { return false; }
+                break;
+        }
+    }
+
+    public static function all_champions($f2p = false) {
+        if(!self::region_check('champion')) {
+            throw new Exception('Currently set region (' . self::get('region') . ') is not available for the current request (all_champions).');
+        }
+        // Region passes. Does the user want free to play (f2p) champions?
+        if($f2p) {
+            $champions = self::request('v1.1', 'champion?freeToPlay=true');
+        }else {
+            $champions = self::request('v1.1', 'champion');
+        }
+
+        return $champions['champions'];
+    }
+
+    private static function search_for_champion($ident) {
+        // Get all champions.
+        $all_champions = self::all_champions();
+
+        // Get the identifier. If it's a string the user is looking for a champ's name, else it's an id.
+        if(is_string($ident)) { $lookfor = 'name'; }else { $lookfor = 'id'; }
+
+        // Now search!
+        $key = NULL;
+        foreach($all_champions as $k => $v) {
+            if($v[$lookfor] == $ident) { $key = $k; }
+        }
+
+        // Incase nothing was found throw an Exception.
+        if($key == NULL) { throw new Exception('Unable to find a champion named "' . $name . '"'); }
+
+        // Got the key, construct the object.
+        $obj                    = new stdClass;
+        $obj->id                = $all_champions[$key]['id'];
+        $obj->name              = $all_champions[$key]['name'];
+        $obj->active            = $all_champions[$key]['active'];
+        $obj->attackRank        = $all_champions[$key]['attackRank'];
+        $obj->defenseRank       = $all_champions[$key]['defenseRank'];
+        $obj->magicRank         = $all_champions[$key]['magicRank'];
+        $obj->difficultyRank    = $all_champions[$key]['difficultyRank'];
+        $obj->botEnabled        = $all_champions[$key]['botEnabled'];
+        $obj->freeToPlay        = $all_champions[$key]['freeToPlay'];
+        $obj->botMmEnabled      = $all_champions[$key]['botMmEnabled'];
+        $obj->rankedPlayEnabled = $all_champions[$key]['rankedPlayEnabled'];
+
+        // Return!
+        return $obj;
+    }
+
+    public static function get_champion_by_name($name) {
+        return self::search_for_champion($name);
+    }
+
+    public static function get_champion_by_id($id) {
+        return self::search_for_champion($id);
     }
 
     // public function test() {
