@@ -91,6 +91,9 @@ class ritopls {
         // Run the request!
         $data = curl_exec(self::$ch);
 
+        // Update the request tick timer, does not matter if it failed or not.
+        touch('./TICK');
+
         // Did it succeed?
         if($data === FALSE) { throw new Exception('cURL failed. Last error output: ' . curl_error(self::$ch)); }
 
@@ -101,16 +104,16 @@ class ritopls {
         switch(self::$ch_info['http_code']) {
             case 400:
                 throw new Exception('400 Bad request.');
-                break;
+            break;
             case 503:
                 throw new Exception('503 Service unavailable.');
-                break;
+            break;
             case 401:
                 throw new Exception('401 Unauthorized.');
-                break;
+            break;
             case 500:
                 throw new Exception('500 Internal server error.');
-                break;
+            break;
         }
 
         // We are good to go, close the connection.
@@ -118,11 +121,14 @@ class ritopls {
 
         // Return the data json decoded, of course.
         return json_decode($data, true);
-
-        // Update the request tick timer.
-        touch('./TICK');
     }
 
+    /**
+     * Checks whether a certain API is available in the currently set region.
+     * @param string $api API type
+     * @param string $region The region itself. This is usually NULL because it's handled by get('region')
+     * @return boolean
+     */
     private static function region_check($api, $region = NULL) {
         if(!$region) { $region = self::get('region'); }
         switch($api) {
@@ -131,17 +137,22 @@ class ritopls {
             case 'stats':
             case 'summoner':
                 if(in_array($region, ['br', 'eune', 'euw', 'na'])) { return true; }else { return false; }
-                break;
+            break;
             case 'team':
             case 'league':
                 if(in_array($region, ['br', 'eune', 'euw', 'na', 'tr'])) { return true; }else { return false; }
-                break;
+            break;
         }
     }
 
+    /**
+     * Lists all champions. Accepts a parameter $f2p to indicate whether only free to play ones should be returned or not.
+     * @param boolean $f2p Whether to return only free to play champions or not (true = yes)
+     * @return array $champions
+     */
     public static function all_champions($f2p = false) {
         if(!self::region_check('champion')) {
-            throw new Exception('Currently set region (' . self::get('region') . ') is not available for the current request (all_champions).');
+            throw new Exception('Currently set region (' . self::get('region') . ') does not implement the current API call (all_champions).');
         }
         // Region passes. Does the user want free to play (f2p) champions?
         if($f2p) {
@@ -153,7 +164,12 @@ class ritopls {
         return $champions['champions'];
     }
 
-    private static function search_for_champion($ident) {
+    /**
+     * Searches for a champion and returns its data via either a champion ID or a champion name.
+     * @param type $ident The identificator. If it's a string a user is looking for a champion by its name. Otherwise, a champion ID is assumed.
+     * @return object $obj
+     */
+    public static function get_champion($ident) {
         // Get all champions.
         $all_champions = self::all_champions();
 
@@ -187,12 +203,62 @@ class ritopls {
         return $obj;
     }
 
-    public static function get_champion_by_name($name) {
-        return self::search_for_champion($name);
-    }
+    public static function get_summoner($ident) {
+        // Let's see if this API is available.
+        if(!self::region_check('summoner')) {
+            throw new Exception('Currently set region (' . self::get('region') . ') does not implement the current API call (all_champions).');
+        }
 
-    public static function get_champion_by_id($id) {
-        return self::search_for_champion($id);
+        /* Alright, the ident can be either... an array, a string, or an integer.
+           If it's an integer the user is looking for a single summoner by their ID.
+           If it's a string, the user is looking for a single summoner by their name.
+           And finally, if it's an array, multiple summoner are looked for. */
+        switch($ident) {
+            case is_array($ident):
+                if(count($ident) > 39) { # 39 because arrays start with 0.
+                    throw new Exception('Maximum number of IDs to retrieve at once is limited to 40.');
+                }
+
+                // Construct the URL by imploding the array into a CSV string.
+                $rest = 'summoner/' . implode(',', $ident);
+            break;
+            case is_string($ident):
+                // The user is looking for a summoner by their name. Fix the name according to the docs
+                // @see https://developer.riotgames.com/api/methods#!/394/1392
+                $ident = strtolower($ident);
+                $ident = trim($ident);
+                $ident = str_replace(' ', '', $ident);
+
+                $rest = 'summoner/by-name/' . urlencode($ident); # Must be urlencoded, some names are in сyяиllис.
+            break;
+            case is_int($ident):
+                // The user is looking for a summoner by their unique ID.
+                $rest = 'summoner/' . $ident;
+            break;
+            default:
+                throw new Exception('Unknown variable type.');
+            break;
+        }
+
+        // Make the request now.
+        $data = self::request('v1.3', $rest);
+
+        // Check the type of the $ident to construct a valid object.
+        if(is_string($ident) || is_int($ident)) {
+            // This is the same now pretty much since it's only a single result.
+            $obj                    = new stdClass;
+            $obj->id                = $data[$ident]['id'];
+            $obj->name              = $data[$ident]['name'];
+            $obj->profileIconId     = $data[$ident]['profileIconId'];
+            $obj->summonerLevel     = $data[$ident]['summonerLevel'];
+            $obj->revisionDate      = $data[$ident]['revisionDate'];
+
+            return $obj;
+        }else {
+            // More than one result, no point in returning this as an object, would only cause hassle.
+            // Instead, return it as an array.
+            return $data;
+        }
     }
 
     // public function test() {
