@@ -166,7 +166,7 @@ class ritopls {
 
     /**
      * Searches for a champion and returns its data via either a champion ID or a champion name.
-     * @param type $ident The identificator. If it's a string a user is looking for a champion by its name. Otherwise, a champion ID is assumed.
+     * @param mixed $ident The identificator. If it's a string a user is looking for a champion by its name. Otherwise, a champion ID is assumed.
      * @return object $obj
      */
     public static function get_champion($ident) {
@@ -203,6 +203,11 @@ class ritopls {
         return $obj;
     }
 
+    /**
+     * Return a summoner object with information related to the summoner either by summoner's uid or their name.
+     * @param mixed $ident The identification. If it's an array, multiple objects are returned. If it's a string/int, a single is returned.
+     * @return object $obj
+     */
     public static function get_summoner($ident) {
         // Let's see if this API is available.
         if(!self::region_check('summoner')) {
