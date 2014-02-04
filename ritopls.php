@@ -205,13 +205,14 @@ class ritopls {
 
     /**
      * Return a summoner object with information related to the summoner either by summoner's uid or their name.
-     * @param mixed $ident The identification. If it's an array, multiple objects are returned. If it's a string/int, a single is returned.
+     * @param mixed $ident The identification. If it's an array, multiple objects are returned.
+     *                     If it's a string/int, a single is returned.
      * @return object $obj
      */
     public static function get_summoner($ident) {
         // Let's see if this API is available.
         if(!self::region_check('summoner')) {
-            throw new Exception('Currently set region (' . self::get('region') . ') does not implement the current API call (all_champions).');
+            throw new Exception('Currently set region (' . self::get('region') . ') does not implement the current API call (get_summoner).');
         }
 
         /* Alright, the ident can be either... an array, a string, or an integer.
@@ -266,12 +267,37 @@ class ritopls {
         }
     }
 
-    // public function test() {
-    //     $obj = new stdClass;
-    //     $obj->username = 'user';
-    //     $obj->password = 'password';
-    //     return $obj;
-    // }
+    /**
+     * Returns a Summoner's username by the given ID. The ID can be either an array (for multiple Summoners)
+     * or simply an integer for a single summoner.
+     * @param mixed $id The ID of the target(s). If it's an array multiple usernames are returned.
+     * @return mixed
+     */
+    public static function get_username_by_id($id) {
+        // Can the user use this API?
+        if(!self::region_check('summoner')) {
+            throw new Exception('Currently set region (' . self::get('region') . ') does not implement the current API call (get_username_by_id).');
+        }
+
+        // Check whether $id is an array or not in order to fetch multiple or a single result.
+        if(is_array($id)) {
+            if(count($id) > 39) { throw new Exception('Maximum number of IDs to retrieve at once is limited to 40.'); }
+
+            // Construct the URL by imploding the array into a CSV string.
+            $rest = 'summoner/' . implode(',', $id) . '/name';
+        }else {
+            if(!is_int($id)) { return false; } # Must be a number.
+            $rest = 'summoner/' . $id . '/name';
+        }
+
+        // Fire off the request!
+        $data = self::request('v1.3', $rest);
+
+        if(!is_int($id)) { return $data; } # Just return the array if it's not an int
+
+        // Else just return the id as a string.
+        return $data[$id];
+    }
 }
 
 ?>
