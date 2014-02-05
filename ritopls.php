@@ -298,6 +298,44 @@ class ritopls {
         // Else just return the id as a string.
         return $data[$id];
     }
+
+    /**
+     * Returns rune pages of multiple summoners or just a single one.
+     * @param int $id Summoner's unique ID or summoners' IDs. If it's an array multiple information is returned.
+     * @return object $obj
+     */
+    public static function get_runes($id) {
+        // Can the user use this API?
+        if(!self::region_check('summoner')) {
+            throw new Exception('Currently set region (' . self::get('region') . ') does not implement the current API call (get_runes).');
+        }
+
+        // More summoners or just one?
+        if(is_array($id)) {
+            if(count($id) > 39) { throw new Exception('Maximum number of IDs to retrieve at once is limited to 40.'); }
+
+            // Just construct the URL for more than 1 summoner:
+            $rest = 'summoner/' . implode(',', $id) . '/runes';
+        }else {
+            if(!is_int($id)) { return false; } # Must be a number.
+            $rest = 'summoner/' . $id . '/runes';
+        }
+
+        // Send the request.
+        $data = self::request('v1.3', $rest);
+
+        if(is_int($id)) { // Return data for one summoner in an object.
+            $obj = new stdClass;
+            $obj->pages = count($data[$id]['pages']); # Store the count.
+            foreach($data[$id]['pages'] as $k => $v) {
+                $obj->page[$k] = $v;
+            }
+            return $obj; # Dump all pages back to user.
+        }
+
+        // If there are multiple summoners just return the request, no need to convert it into an object.
+        return $data;
+    }
 }
 
 ?>
