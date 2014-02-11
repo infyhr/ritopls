@@ -79,7 +79,7 @@ class ritopls {
         curl_setopt(self::$ch, CURLOPT_HEADER, false);
         curl_setopt(self::$ch, CURLOPT_RETURNTRANSFER, true);
         if(self::is_set('no_ssl_verify')) {
-            curl_setopt(self::$ch,  CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt(self::$ch,  CURLOPT_SSL_VERIFYPEER, false);
         }
         curl_setopt(self::$ch, CURLOPT_TIMEOUT, self::get('timeout'));
         curl_setopt(self::$ch, CURLOPT_HTTPHEADER, array(
@@ -92,7 +92,7 @@ class ritopls {
         $data = curl_exec(self::$ch);
 
         // Update the request tick timer, does not matter if it failed or not.
-        touch('./TICK');
+        if(!touch('./TICK')) { throw new Exception('Unable to run touch(). Do you have the needed permissions?'); }
 
         // Did it succeed?
         if($data === FALSE) { throw new Exception('cURL failed. Last error output: ' . curl_error(self::$ch)); }
@@ -330,7 +330,10 @@ class ritopls {
             foreach($data[$id]['pages'] as $k => $v) {
                 $obj->page[$k] = $v;
             }
-            return $obj; # Dump all pages back to user.
+
+            var_dump($obj);
+
+            #return $obj; # Dump all pages back to user.
         }
 
         // If there are multiple summoners just return the request, no need to convert it into an object.
