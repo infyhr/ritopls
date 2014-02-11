@@ -325,15 +325,20 @@ class ritopls {
         $data = self::request('v1.3', $rest);
 
         if(is_int($id)) { // Return data for one summoner in an object.
-            $obj = new stdClass;
-            $obj->pages = count($data[$id]['pages']); # Store the count.
+            $obj            = new stdClass;
+            $obj->page[]    = new stdClass;
+            $obj->pages     = count($data[$id]['pages']); # Store the count.
             foreach($data[$id]['pages'] as $k => $v) {
-                $obj->page[$k] = $v;
+                // Only way to make PHP shut up is by force.
+                @$obj->page[$k]->name        = htmlentities($data[$id]['pages'][$k]['name']);
+                @$obj->page[$k]->id          = $data[$id]['pages'][$k]['id'];
+                @$obj->page[$k]->current     = $data[$id]['pages'][$k]['current'];
+                if(array_key_exists('slots', $data[$id]['pages'][$k])) {
+                    $obj->page[$k]->slots   = $data[$id]['pages'][$k]['slots'];
+                }
             }
 
-            var_dump($obj);
-
-            #return $obj; # Dump all pages back to user.
+            return $obj; # Dump all pages back to user.
         }
 
         // If there are multiple summoners just return the request, no need to convert it into an object.
