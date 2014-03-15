@@ -136,7 +136,7 @@ class ritopls {
             case 'game':
             case 'stats':
             case 'summoner':
-                if(in_array($region, ['br', 'eune', 'euw', 'na'])) { return true; }else { return false; }
+                if(in_array($region, ['br', 'eune', 'euw', 'na', 'lan', 'las', 'oce'])) { return true; }else { return false; }
             break;
             case 'team':
             case 'league':
@@ -301,7 +301,7 @@ class ritopls {
 
     /**
      * Returns rune pages of multiple summoners or just a single one.
-     * @param int $id Summoner's unique ID or summoners' IDs. If it's an array multiple information is returned.
+     * @param mixed $id Summoner's unique ID or summoners' IDs. If it's an array multiple information is returned.
      * @return object $obj
      */
     public static function get_runes($id) {
@@ -329,12 +329,12 @@ class ritopls {
             $obj->page[]    = new stdClass;
             $obj->pages     = count($data[$id]['pages']); # Store the count.
             foreach($data[$id]['pages'] as $k => $v) {
-                // Only way to make PHP shut up is by force.
+                // Only way to make PHP shut up is by using force.
                 @$obj->page[$k]->name        = htmlentities($data[$id]['pages'][$k]['name']);
                 @$obj->page[$k]->id          = $data[$id]['pages'][$k]['id'];
                 @$obj->page[$k]->current     = $data[$id]['pages'][$k]['current'];
                 if(array_key_exists('slots', $data[$id]['pages'][$k])) {
-                    $obj->page[$k]->slots   = $data[$id]['pages'][$k]['slots'];
+                    $obj->page[$k]->slots    = $data[$id]['pages'][$k]['slots'];
                 }
             }
 
@@ -343,6 +343,50 @@ class ritopls {
 
         // If there are multiple summoners just return the request, no need to convert it into an object.
         return $data;
+    }
+
+    /**
+     * Returns mastery pages of multiple summoners or just a single summoner.
+     * @param mixed $id Summoner's unique ID or summoners' IDs. If it's an array multiple information is returned.
+     * @return object $obj
+     */
+    public static function get_masteries($id) {
+        // Are we permitted to use this API call?
+        if(!self::region_check('summoner')) {
+            throw new Exception('Currently set region (' . self::get('region') . ') does not implement the current API call (get_masteries).');
+        }
+
+        // More summoners or just one?
+        if(is_array($id)) {
+            if(count($id) > 39) { throw new Exception('Maximum number of IDs to retrieve at once is limited to 40.'); }
+
+            // Just construct the URL for more than 1 summoner:
+            $rest = 'summoner/' . implode(',', $id) . '/masteries';
+        }else {
+            if(!is_int($id)) { return false; } # Must be a number.
+            $rest = 'summoner/' . $id . '/masteries';
+        }
+
+        $data = self::request('v1.3', $rest);
+
+        if(is_int($id)) { // One summoner requested.
+            $obj             = new stdClass;
+            $obj->page[]     = new stdClass;
+
+            $obj->summonerId = $id;
+            $obj->pages      = count($data[$id]['pages']);
+
+            foreach($data[$id]['pages'] as $k => $v) {
+                @$obj->page[$k]->name    = htmlentities($data[$id]['pages'][$k]['name']);
+                @$obj->page[$k]->id      = $data[$id]['pages'][$k]['id'];
+                @$obj->page[$k]->current = $data[$id]['pages'][$k]['current'];
+                @$obj->page[$k]->talents = $data[$id]['pages'][$k]['talents'];
+            }
+
+            return $obj; # Dump back the object nicely formatted.
+        }
+
+        return $data; # Or just return the data if there's more than one summoner.
     }
 }
 
