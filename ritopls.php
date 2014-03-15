@@ -114,6 +114,9 @@ class ritopls {
             case 500:
                 throw new Exception('500 Internal server error.');
             break;
+            case 404:
+                throw new Exception('404 Not Found.');
+            break;
         }
 
         // We are good to go, close the connection.
@@ -226,14 +229,18 @@ class ritopls {
                 }
 
                 // Construct the URL by imploding the array into a CSV string.
-                $rest = 'summoner/' . implode(',', $ident);
+                // Does the array contain integers only? If so, the request is made up of multiple IDs.
+                if(array_filter($ident, 'is_int') === TRUE) {
+                    $rest = 'summoner/' . implode(',', $ident);
+                }else {
+                    // $ident = urlencode(self::standardize_name($ident));
+                    $rest  = 'summoner/by-name/' . implode(',', $ident);
+                }
             break;
             case is_string($ident):
                 // The user is looking for a summoner by their name. Fix the name according to the docs
                 // @see https://developer.riotgames.com/api/methods#!/394/1392
-                $ident = strtolower($ident);
-                $ident = trim($ident);
-                $ident = str_replace(' ', '', $ident);
+                // $ident = self::standardize_name($ident);
 
                 $rest = 'summoner/by-name/' . urlencode($ident); # Must be urlencoded, some names are in сyяиllис.
             break;
