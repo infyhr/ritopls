@@ -13,6 +13,10 @@ class API {
     private $chOutput;
     public $lastRequest; // Timestamp of the last request.
 
+    /**
+     * @param $API_KEY Development API key
+     * @param $region One of the allowed regions. See $regions above.
+     */
     public function __construct($API_KEY, $region) {
         if(empty($API_KEY) || empty($region)) throw new \InvalidArgumentException('API/Region are blank.');
 
@@ -28,6 +32,7 @@ class API {
     /**
      * @param $endpoint API endpoint that's going to be appended
      * @param bool|FALSE $special one of the special APIs
+     * @param string $data Specific API call which gets appended to the URI
      * @return string JSON decoded output
      * @throws \Exception
      */
@@ -89,6 +94,9 @@ class API {
         return json_decode($this->chOutput, true);
     }
 
+    /**
+     * Just frees the CURL resource.
+     */
     public function __destruct() {
         // Make sure we close this every time we end the API call.
         if(is_resource($this->ch)) curl_close($this->ch);
