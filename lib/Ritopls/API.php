@@ -11,6 +11,7 @@ class API {
     private $verifySSL = false; // Verify cURL SSL certificate
     private $timeout = 10; // After how much seconds to timeout the connection
     private $chOutput;
+    public $lastRequest; // Timestamp of the last request.
 
     public function __construct($API_KEY, $region) {
         if(empty($API_KEY) || empty($region)) throw new \InvalidArgumentException('API/Region are blank.');
@@ -30,11 +31,11 @@ class API {
      * @return string JSON decoded output
      * @throws \Exception
      */
-    public function request($endpoint, $special = NULL) {
+    public function request($endpoint, $data, $special = NULL) {
         // Set up cURL first
         $this->ch = curl_init();
-        curl_setopt($this->ch, CURLOPT_URL, sprintf('https://%s.api.pvp.net/api/lol/%s/%s/?api_key=%s',
-                                                      $this->region, $this->region, $endpoint, $this->API_KEY));
+        curl_setopt($this->ch, CURLOPT_URL, sprintf('https://%s.api.pvp.net/api/lol/%s/%s/%s?api_key=%s',
+                                                      $this->region, $this->region, $endpoint, $data, $this->API_KEY));
         if(!is_null($special)) {
             // Set the "special" URL here to it.
             curl_setopt($this->ch, CURLOPT_URL, $special);
@@ -53,8 +54,10 @@ class API {
 
         // Execute the request
         $this->chOutput = curl_exec($this->ch);
+        // Update the last request time
+        $this->lastRequest = time();
         if($this->chOutput === FALSE) {
-            throw new Exceptions\APIException('cURL request failed: ', curl_error($this->ch));
+            throw new Exceptions\APIException('cURL request failed: ' . curl_error($this->ch));
         }
 
         // Grab the response data
@@ -64,6 +67,9 @@ class API {
             break;
             case 401:
                 throw new Exceptions\APIException('401: Unauthorized');
+            break;
+            case 403:
+                throw new Exceptions\APIException('403: Forbidden');
             break;
             case 404:
                 throw new Exceptions\APIException('404: No summoner data found for any specified inputs');
@@ -79,16 +85,13 @@ class API {
             break;
         }
 
-        // Close the connection
-        curl_close($this->ch);
-
         // Return the data JSON decoded
         return json_decode($this->chOutput, true);
     }
 
     public function __destruct() {
         // Make sure we close this every time we end the API call.
-        curl_close($this->ch);
+        if(is_resource($this->ch)) curl_close($this->ch);
         $this->ch = NULL;
     }
 }
