@@ -1,0 +1,19 @@
+{
+  "name": "infyhr/ritopls",
+  "description": "Very basic League of Legends PHP API wrapper",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "T.B.",
+      "email": "infy@cybershade.org"
+    }
+  ],
+  "require": {
+    "phpunit/phpunit": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Ritopls\\": "lib/Ritopls/"
+    }
+  }
+}
